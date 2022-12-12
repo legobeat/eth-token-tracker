@@ -3,7 +3,6 @@ const path = require('path')
 const test = require('tape')
 const TestRPC = require('ethereumjs-testrpc')
 const provider = TestRPC.provider()
-const ProviderEngine = require('web3-provider-engine')
 
 const solc = require('solc')
 const TokenTracker = require('../../lib')
