@@ -46,7 +46,7 @@
     "ethjs": "^0.4.0",
     "ethjs-contract": "^0.2.3",
     "ethjs-query": "^0.3.8",
-    "human-standard-token-abi": "^1.0.2"
+    "human-standard-token-abi": "^2.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.5.5",
