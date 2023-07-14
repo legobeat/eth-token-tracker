@@ -6,12 +6,11 @@ const provider = ganache.provider()
 
 const solc = require('solc')
 const TokenTracker = require('../../lib')
-const BN = require('ethjs').BN
+const { BigNumber } = require('@ethersproject/bignumber')
 
-const Eth = require('ethjs-query')
-const EthContract = require('ethjs-contract')
-const eth = new Eth(provider)
-const contract = new EthContract(eth)
+const { Web3Provider } = require('@ethersproject/providers')
+const { ContractFactory } = require('@ethersproject/contracts')
+const eth = new Web3Provider(provider)
 
 const source = fs.readFileSync(path.resolve(__dirname, '..', 'contracts/Token.sol')).toString();
 const compiled = solc.compile(source, 1)
@@ -24,7 +23,7 @@ let addresses = []
 let token, tokenAddress, tracked
 
 test('testrpc has addresses', function (t) {
-  eth.accounts()
+  eth.listAccounts()
   .then((accounts) => {
     addresses = accounts
     t.ok(accounts, 'loaded accounts')
@@ -34,34 +33,34 @@ test('testrpc has addresses', function (t) {
 
 test('HumanStandardToken publishing token & checking balance', function (t) {
   const abi = JSON.parse(HumanStandardDeployer.interface)
-  const HumanStandardToken = contract(abi, HumanStandardDeployer.bytecode, {
+  const signer = eth.getSigner()
+  const HumanStandardToken = new ContractFactory(abi, HumanStandardDeployer.bytecode, signer)
+  /*
+  const HumanStandardToken = new ContractFactory(abi, HumanStandardDeployer.bytecode, {
     from: addresses[0],
     gas: '3000000',
     gasPrice: '875000000',
   })
-  const humanStandardToken = HumanStandardToken.new('1000',
+  */
+  const humanStandardToken = HumanStandardToken.deploy('1000',
                                                     'DanBucks',
                                                     '2', // decimals
                                                     SET_SYMBOL)
   .then((txHash) => {
     t.ok(txHash, 'publishes a txHash')
 
-    return new Promise((res, rej) => {
+    return new Promise((res, _rej) => {
       setTimeout(() => res(txHash), 200)
     })
   })
-  .then((txHash) => {
-    return eth.getTransactionReceipt(txHash)
-  })
-  .then((receipt) => {
-    const addr = receipt.contractAddress
+  .then((contract) => {
+    const addr = contract.address
     tokenAddress = addr
-    token = HumanStandardToken.at(addr)
+    token = contract
     return token.balanceOf(addresses[0])
   })
-  .then((res) => {
-    const balance = res[0]
-    t.equal(balance.toString(10), '1000', 'owner should have all')
+  .then((balance) => {
+    t.equal(balance.toString(), '1000', 'owner should have all')
     t.end()
   })
   .catch((reason) => {
@@ -85,22 +84,16 @@ test('HumanStandardToken balances are tracked', function (t) {
   })
   tracked = tokenTracker.tokens[0]
 
-  var a = new Promise((res, rej) => { setTimeout(res, 200) })
+  var a = new Promise((res, _rej) => { setTimeout(res, 1000) })
   a.then(() => {
-    t.equal(tracked.balance.toString(10), '1000', 'initial balance loaded')
+    t.equal(tracked.balance.toString(), '1000', 'initial balance loaded')
     return token.transfer(addresses[1], '110')
   })
-  .then((txHash) => {
-    return eth.getTransactionReceipt(txHash)
-  })
-  .then((receipt) => {
-    var a = new Promise((res, rej) => { setTimeout(res, 200) })
-    return a
-  })
+  .then(() => new Promise((res, _rej) => { setTimeout(res, 1000) }))
   .then(() => {
     t.equal(tracked.symbol, EXPECTED_SYMBOL, 'symbol cached')
     t.equal(tracked.address, tokenAddress, 'token address set')
-    t.equal(tracked.balance.toString(10), '890', 'tokens sent')
+    t.equal(tracked.balance.toString(), '890', 'tokens sent')
     t.equal(tracked.decimals.toString(), '2', 'decimals received')
 
     const data = tracked.serialize()

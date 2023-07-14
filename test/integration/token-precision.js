@@ -5,13 +5,12 @@ const ganache = require('ganache')
 const provider = ganache.provider()
 const solc = require('solc')
 const TokenTracker = require('../../lib')
-const BN = require('ethjs').BN
+const { BigNumber } = require('@ethersproject/bignumber')
 const util = require('../../lib/util')
 
-const Eth = require('ethjs-query')
-const EthContract = require('ethjs-contract')
-const eth = new Eth(provider)
-const contract = new EthContract(eth)
+const { Web3Provider } = require('@ethersproject/providers')
+const { ContractFactory } = require('@ethersproject/contracts')
+const eth = new Web3Provider(provider)
 let count = 0
 
 const source = fs.readFileSync(path.resolve(__dirname, '..', 'contracts/ZeppelinToken.sol')).toString();
@@ -23,7 +22,7 @@ let addresses = []
 let token, tokenAddress, tracked
 
 test('testrpc has addresses', function (t) {
-  eth.accounts()
+  eth.listAccounts()
   .then((accounts) => {
     addresses = accounts
     t.ok(accounts, 'loaded accounts')
@@ -84,8 +83,8 @@ generateTestWithParams({
 })
 
 test('Precision rendering test for issue 2162', function (t) {
-  const quantity = new BN('279290')
-  const precision = new BN('18')
+  const quantity = BigNumber.from('279290')
+  const precision = BigNumber.from('18')
   const string = util.stringifyBalance(quantity, precision)
   t.equal(string, '0.00000000000027929', 'represents decimals')
   t.end()
@@ -99,34 +98,28 @@ function generateTestWithParams(opts = {}) {
   test(`Generated token precision test ${++count}`, function (t) {
     const abi = JSON.parse(SimpleTokenDeployer.interface)
     const owner = addresses[0]
-    const StandardToken = contract(abi, SimpleTokenDeployer.bytecode, {
-      from: owner,
-      gas: '3000000',
-      gasPrice: '875000000',
-    })
-    StandardToken.new(qty, precision)
-    .then((txHash) => {
-      t.ok(txHash, 'publishes a txHash')
+    const signer = eth.getSigner(owner)
+    const StandardToken = new ContractFactory(abi, SimpleTokenDeployer.bytecode, signer)
+    StandardToken.deploy(qty, precision)
+    .then((contract) => {
+      t.ok(contract, 'returns a contract')
 
       return new Promise((res, rej) => {
-        setTimeout(() => res(txHash), 300)
+        setTimeout(() => res(contract), 300)
       })
     })
-    .then((txHash) => {
-      return eth.getTransactionReceipt(txHash)
-    })
-    .then((receipt) => {
-      const addr = receipt.contractAddress
+    .then((contract) => {
+      const addr = contract.address
       t.ok(addr, 'should have an address')
       tokenAddress = addr
-      token = StandardToken.at(addr)
+      token = contract
       return token.balanceOf(owner)
     })
     .then((res) => {
-      const balance = res[0]
-      t.equal(balance.toString(10), qty, 'owner should have all')
+      const balance = res
+      t.equal(balance.toString(), qty, 'owner should have all')
 
-      var tokenTracker = new TokenTracker({
+      const tokenTracker = new TokenTracker({
         userAddress: addresses[0],
         provider,
         pollingInterval: 20,
@@ -141,7 +134,7 @@ function generateTestWithParams(opts = {}) {
 
       var a = new Promise((res, rej) => { setTimeout(res, 200) })
       a.then(() => {
-        const bnFull = new BN(qty)
+        const bnFull = BigNumber.from(qty)
         const should = bnFull.toString()
         tracked = tokenTracker.serialize()[0]
         tokenTracker.stop()

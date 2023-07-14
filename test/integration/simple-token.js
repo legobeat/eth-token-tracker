@@ -1,6 +1,6 @@
 const test = require('tape')
 
-const BN = require('ethjs').BN
+const { BigNumber } = require('@ethersproject/bignumber')
 
 const TokenTracker = require('../../lib')
 const { setupSimpleTokenEnvironment } = require('../helper')
@@ -17,6 +17,7 @@ test('StandardToken balances are tracked', function (t) {
   let tokenTracker
   setupSimpleTokenEnvironment()
   .then((environment) => {
+    console.log('F00', environment)
     addresses = environment.addresses
     eth = environment.eth
     token = environment.token
@@ -43,24 +44,21 @@ test('StandardToken balances are tracked', function (t) {
     t.equal(tracked.balance.toString(10), qty, 'initial balance loaded')
     return token.transfer(addresses[1], less)
   })
-  .then((txHash) => {
-    return eth.getTransactionReceipt(txHash)
-  })
   .then((receipt) => {
     var a = new Promise((res, rej) => { setTimeout(res, 200) })
     return a
   })
   .then(() => {
 
-    const bnFull = new BN(qty)
-    const bnLess = new BN(less)
+    const bnFull = BigNumber.from(qty)
+    const bnLess = BigNumber.from(less)
     const should = bnFull.sub(bnLess).toString()
     tracked = tokenTracker.serialize()[0]
 
     t.equal(tracked.symbol, 'MKR', 'initial symbol assumed')
     t.equal(tracked.decimals, 18, 'initial decimals retained')
     t.equal(tracked.address, tokenAddress, 'token address set')
-    t.equal(tracked.balance.toString(10), should, 'tokens sent')
+    t.equal(tracked.balance.toString(), should, 'tokens sent')
 
     t.ok(tracked.string.indexOf('90') === 0, 'represents decimals')
 

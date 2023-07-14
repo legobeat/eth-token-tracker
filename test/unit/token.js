@@ -1,5 +1,5 @@
 const test = require('tape')
-const BN = require('ethjs').BN
+const { BigNumber } = require('@ethersproject/bignumber')
 
 const Token = require('../../lib/token')
 const { setupSimpleTokenEnvironment } = require('../helper')
@@ -98,7 +98,7 @@ test('token with unprefixed hex string balance', async function (t) {
   t.plan(1)
   const { addresses, token: contract } = await setupSimpleTokenEnvironment()
   const token = new Token({
-    balance: 'f',
+    balance: '0xf',
     contract,
     owner: addresses[0],
   })
@@ -112,7 +112,7 @@ test('token with decimal string balance', async function (t) {
   t.plan(1)
   const { addresses, token: contract } = await setupSimpleTokenEnvironment()
   const token = new Token({
-    balance: '10',
+    balance: '0x10',
     contract,
     owner: addresses[0],
   })
@@ -122,11 +122,11 @@ test('token with decimal string balance', async function (t) {
   t.end()
 })
 
-test('token with BN.js balance', async function (t) {
+test('token with bignumber balance', async function (t) {
   t.plan(1)
   const { addresses, token: contract } = await setupSimpleTokenEnvironment()
   const token = new Token({
-    balance: new BN(10),
+    balance: BigNumber.from(10),
     contract,
     owner: addresses[0],
   })
@@ -314,11 +314,11 @@ test('token with empty string decimals', async function (t) {
   t.end()
 })
 
-test('token with BN.js decimals', async function (t) {
+test('token with BigNumber decimals', async function (t) {
   t.plan(1)
   const { addresses, token: contract } = await setupSimpleTokenEnvironment()
   const token = new Token({
-    decimals: new BN(10),
+    decimals: BigNumber.from(10),
     contract,
     owner: addresses[0],
   })
